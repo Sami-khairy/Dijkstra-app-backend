@@ -9,15 +9,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-
-
 public class DijkstraService {
     private final Map<String, Integer> distances;
     private final Map<String, String> predecesseurs;
     private final Set<String> sommetsNonVisites;
     private final Set<String> sommetsVisites;
-    private  Graphe graphe;
-
+    private Graphe graphe;
+    private final List<String> detailsMessages; // Liste pour stocker les messages détaillés
 
     public DijkstraService() {
         this.distances = new HashMap<>();
@@ -25,16 +23,18 @@ public class DijkstraService {
         this.sommetsNonVisites = new HashSet<>();
         this.sommetsVisites = new HashSet<>();
         this.graphe = new Graphe();
+        this.detailsMessages = new ArrayList<>(); // Initialisation de la liste
     }
 
-    public Map<String, Integer> calculerCheminMinimal(Graphe graphe, String sommetDepartNom, boolean details) {
+    public Map<String, Object> calculerCheminMinimal(Graphe graphe, String sommetDepartNom, boolean details) {
         this.graphe = graphe;
         distances.put(sommetDepartNom, 0);
+        predecesseurs.put(sommetDepartNom, null); // Le nœud de départ n'a pas de prédécesseur
         sommetsNonVisites.addAll(graphe.getSommets().stream().map(Sommet::getNom).collect(Collectors.toSet()));
 
         // Affichage initial
         if (details) {
-            afficherEtatInitial();
+            afficherEtatInitial(sommetDepartNom);
         }
 
         int iteration = 0;
@@ -56,14 +56,42 @@ public class DijkstraService {
                     int nouvelleDistance = distances.getOrDefault(sommetCourantNom, Integer.MAX_VALUE) + arrete.getPoids();
                     if (nouvelleDistance < distances.getOrDefault(voisinNom, Integer.MAX_VALUE)) {
                         distances.put(voisinNom, nouvelleDistance);
-                        predecesseurs.put(voisinNom, sommetCourantNom);
+                        predecesseurs.put(voisinNom, sommetCourantNom); // Mettre à jour le prédécesseur
                     }
                 }
             }
         }
 
-        // Convertir les résultats pour retourner des noms de sommets avec leurs distances
-        return new HashMap<>(distances);
+        // Construire les chemins
+        Map<String, List<String>> chemins = reconstruireChemins(sommetDepartNom);
+
+        // Retourner les résultats avec les messages détaillés
+        Map<String, Object> result = new HashMap<>();
+        result.put("distances", new HashMap<>(distances));
+        result.put("chemins", chemins);
+
+        if (details) {
+            result.put("details", detailsMessages);
+        }
+        return result;
+    }
+
+    private Map<String, List<String>> reconstruireChemins(String sommetDepartNom) {
+        Map<String, List<String>> chemins = new HashMap<>();
+        for (String sommet : graphe.getSommets().stream().map(Sommet::getNom).collect(Collectors.toSet())) {
+            List<String> chemin = new ArrayList<>();
+            String courant = sommet;
+            while (courant != null) {
+                chemin.add(0, courant); // Ajouter au début de la liste pour inverser l'ordre
+                courant = predecesseurs.get(courant);
+            }
+            if (!chemin.isEmpty() && chemin.get(0).equals(sommetDepartNom)) {
+                chemins.put(sommet, chemin);
+            } else {
+                chemins.put(sommet, Collections.singletonList("Inaccessible"));
+            }
+        }
+        return chemins;
     }
 
     private String obtenirSommetDistanceMinimale() {
@@ -81,55 +109,38 @@ public class DijkstraService {
         return sommetMin;
     }
 
-    private void afficherEtatInitial() {
-        // Afficher l'initialisation
-        Set<String> sommetsVisitesInitiaux = new HashSet<>();
-        Set<String> sommetsNonVisitesInitiaux = new HashSet<>(graphe.getSommets().stream().map(Sommet::getNom).collect(Collectors.toSet()));
-
-        // Ajouter le sommet de départ à S
-        String sommetDepartNom = graphe.getSommets().stream()
-                .filter(s -> distances.getOrDefault(s.getNom(), Integer.MAX_VALUE) == 0)
-                .map(Sommet::getNom)
-                .findFirst()
-                .orElse(null);
-
-        if (sommetDepartNom != null) {
-            sommetsVisitesInitiaux.add(sommetDepartNom);
-            sommetsNonVisitesInitiaux.remove(sommetDepartNom);
-        }
-
-        String S = "{" + (sommetDepartNom != null ? sommetDepartNom : "") + "}";
-        String S_ = sommetsNonVisitesInitiaux.stream()
+    private void afficherEtatInitial(String sommetDepartNom) {
+        String S = "{" + sommetDepartNom + "}";
+        String S_ = sommetsNonVisites.stream()
+                .filter(s -> !s.equals(sommetDepartNom))
                 .collect(Collectors.joining(", ", "[", "]"));
+        String pi = calculerVecteurPi();
 
-        String pi = calculerVecteurPi(); // Utiliser la méthode calculerVecteurPi pour afficher les distances
-
-        System.out.println("Initialisation");
-        System.out.println("S=" + S + " ; 𝑆−=" + S_ + " ; π=" + pi);
+        // Ajouter le message à la liste
+        detailsMessages.add("Initialisation");
+        detailsMessages.add("S=" + S + " ; 𝑆−=" + S_ + " ; π=" + pi);
     }
 
     private void afficherEtatIteration(String sommetCourantNom, int iteration) {
         // Affichage de l'étape i, des successeurs et de la mise à jour des distances
-        System.out.println(iteration + "ère Itération :");
-        String pi = calculerVecteurPi();
-        System.out.println("Les successeurs de " + sommetCourantNom + " dans 𝑆−");
+        detailsMessages.add(iteration + "ère Itération :");
+        detailsMessages.add("Les successeurs de " + sommetCourantNom + " dans 𝑆−");
 
         Sommet sommetCourant = graphe.getSommet(sommetCourantNom);
         for (Arrete arrete : sommetCourant.getArretes()) {
             String voisinNom = arrete.getDestination();
             int nouvelleDistance = distances.getOrDefault(sommetCourantNom, Integer.MAX_VALUE) + arrete.getPoids();
             if (nouvelleDistance < distances.getOrDefault(voisinNom, Integer.MAX_VALUE)) {
-                System.out.println("π(" + voisinNom + ")=min(" +
+                detailsMessages.add("π(" + voisinNom + ")=min(" +
                         (distances.containsKey(voisinNom) ?
                                 (distances.get(voisinNom) == Integer.MAX_VALUE ? "∞" : distances.get(voisinNom)) : "∞") +
                         "," + distances.get(sommetCourantNom) + "+" + arrete.getPoids() + ")=" + nouvelleDistance);
-                distances.put(voisinNom, nouvelleDistance);
-                pi = calculerVecteurPi();
             }
         }
 
-        System.out.println("Le nouveau vecteur π=" + pi);
-        System.out.println("-----------------------------------------------------");
+        String pi = calculerVecteurPi();
+        detailsMessages.add("Le nouveau vecteur π=" + pi);
+        detailsMessages.add("-----------------------------------------------------");
     }
 
     private String calculerVecteurPi() {

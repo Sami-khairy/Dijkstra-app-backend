@@ -17,7 +17,7 @@ public class DijkstraController {
     }
 
     @PostMapping("/calculate")
-    public Map<String, Integer> calculateShortestPath(
+    public Map<String, Object> calculateShortestPath(
             @RequestParam String startNode,
             @RequestParam(required = false, defaultValue = "false") boolean details,
             @RequestBody Graphe graphe) {
