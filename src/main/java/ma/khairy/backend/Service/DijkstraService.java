@@ -26,7 +26,17 @@ public class DijkstraService {
         this.detailsMessages = new ArrayList<>(); // Initialisation de la liste
     }
 
+    public void reinitialiser() {
+        this.distances.clear();
+        this.predecesseurs.clear();
+        this.sommetsNonVisites.clear();
+        this.sommetsVisites.clear();
+        this.detailsMessages.clear();
+    }
     public Map<String, Object> calculerCheminMinimal(Graphe graphe, String sommetDepartNom, boolean details) {
+        reinitialiser();
+
+
         this.graphe = graphe;
         distances.put(sommetDepartNom, 0);
         predecesseurs.put(sommetDepartNom, null); // Le nœud de départ n'a pas de prédécesseur
