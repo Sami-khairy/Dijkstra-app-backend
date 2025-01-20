@@ -76,13 +76,14 @@ public class DijkstraService {
         Map<String, List<String>> chemins = reconstruireChemins(sommetDepartNom);
 
         // Retourner les résultats avec les messages détaillés
-        Map<String, Object> result = new HashMap<>();
-        result.put("distances", new HashMap<>(distances));
-        result.put("chemins", chemins);
-
+        Map<String, Object> result = new LinkedHashMap<>();
         if (details) {
             result.put("details", detailsMessages);
         }
+        result.put("distances", new HashMap<>(distances));
+        result.put("chemins", chemins);
+
+
         return result;
     }
 
@@ -132,8 +133,9 @@ public class DijkstraService {
     }
 
     private void afficherEtatIteration(String sommetCourantNom, int iteration) {
+        iteration++;
         // Affichage de l'étape i, des successeurs et de la mise à jour des distances
-        detailsMessages.add(iteration + "ère Itération :");
+        detailsMessages.add("Itération : "+iteration);
         detailsMessages.add("Les successeurs de " + sommetCourantNom + " dans 𝑆−");
 
         Sommet sommetCourant = graphe.getSommet(sommetCourantNom);
